@@ -38,7 +38,7 @@ class MethodTimer {
     String methodName = getCallingMethodName();
     MethodTimingInfo info = getValidInfo(methodName);
     if (!info.isTiming) {
-      System.err.println("Cannot re stop timing the method: " + methodName);
+      System.err.println("Method: " + methodName + " is missing the start(); call");
     } else {
       info.isTiming = false;
       info.currentNanos += (stopTime - info.startTime);
@@ -49,7 +49,10 @@ class MethodTimer {
     for (Entry<String, MethodTimingInfo> methodNameInfo : methodTimings.entrySet()) {
       String methodName = methodNameInfo.getKey();
       MethodTimingInfo info = methodNameInfo.getValue();
-      System.out.println("Method: " + methodName + ' ' + formatter.format(info.currentNanos * NANOS_TO_MILLIS) + " ms");
+      if (info.isTiming)
+        System.err.println("Method: " + methodName + " is missing a stop(); call or is still being timed");
+      else
+        System.out.println("Method: " + methodName + ' ' + formatter.format(info.currentNanos * NANOS_TO_MILLIS) + " ms");
     }
     System.out.println();
   }
