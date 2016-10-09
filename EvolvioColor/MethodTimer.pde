@@ -11,12 +11,13 @@ class MethodTimer {
   }
 
   private final double                              NANOS_TO_MILLIS = 1E-6;
-  private final NumberFormat                        FORMATTER       = NumberFormat.getNumberInstance();
+
+  private final NumberFormat                        formatter       = NumberFormat.getNumberInstance();
   private final SortedMap<String, MethodTimingInfo> methodTimings   = new TreeMap<>();
 
   public MethodTimer() {
-    FORMATTER.setMinimumFractionDigits(1);
-    FORMATTER.setMaximumFractionDigits(3);
+    formatter.setMinimumFractionDigits(1);
+    formatter.setMaximumFractionDigits(3);
   }
 
   public void start() {
@@ -48,7 +49,7 @@ class MethodTimer {
     for (Entry<String, MethodTimingInfo> methodNameInfo : methodTimings.entrySet()) {
       String methodName = methodNameInfo.getKey();
       MethodTimingInfo info = methodNameInfo.getValue();
-      System.out.println("Method: " + methodName + ' ' + FORMATTER.format(info.currentNanos * NANOS_TO_MILLIS) + " ms");
+      System.out.println("Method: " + methodName + ' ' + formatter.format(info.currentNanos * NANOS_TO_MILLIS) + " ms");
     }
   }
 
