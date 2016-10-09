@@ -13,7 +13,7 @@ class MethodTimer {
   private final double                              NANOS_TO_MILLIS = 1E-6;
 
   private final NumberFormat                        formatter       = NumberFormat.getNumberInstance();
-  private final SortedMap<String, MethodTimingInfo> methodTimings   = new TreeMap<>();
+  private final SortedMap<String, MethodTimingInfo> methodTimings   = new TreeMap<String, MethodTimingInfo>();
 
   public MethodTimer() {
     formatter.setMinimumFractionDigits(1);
