@@ -51,6 +51,7 @@ class MethodTimer {
       MethodTimingInfo info = methodNameInfo.getValue();
       System.out.println("Method: " + methodName + ' ' + formatter.format(info.currentNanos * NANOS_TO_MILLIS) + " ms");
     }
+    System.out.println();
   }
 
   private String getCallingMethodName() {
