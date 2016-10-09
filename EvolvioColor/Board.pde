@@ -46,6 +46,7 @@ class Board {
   int[] populationHistory;
   double recordPopulationEvery = 0.02;
   int playSpeed = 1;
+  MethodTimer timer = new MethodTimer();
 
   public Board(int w, int h, float stepSize, float min, float max, int rta, int cm, int SEED, String INITIAL_FILE_NAME, double ts) {
     noiseSeed(SEED);
@@ -100,6 +101,7 @@ class Board {
     }
   }
   public void drawBoard(float scaleUp, float camZoom, int mX, int mY) {
+    timer.start();
     for (int x = 0; x < boardWidth; x++) {
       for (int y = 0; y < boardHeight; y++) {
         tiles[x][y].drawTile(scaleUp, (mX == x && mY == y));
@@ -111,12 +113,14 @@ class Board {
     for (int i = 0; i < creatures.size(); i++) {
       creatures.get(i).drawSoftBody(scaleUp, camZoom, true);
     }
+    timer.stop();
   }
   public void drawBlankBoard(float scaleUp) {
     fill(BACKGROUND_COLOR);
     rect(0, 0, scaleUp*boardWidth, scaleUp*boardHeight);
   }
   public void drawUI(float scaleUp, float camZoom, double timeStep, int x1, int y1, int x2, int y2, PFont font) {
+    timer.start();
     fill(0, 0, 0);
     noStroke();
     rect(x1, y1, x2-x1, y2-y1);
@@ -290,8 +294,10 @@ class Board {
     if (selectedCreature != null) {
       drawCreature(selectedCreature, x1+65, y1+147, 2.3, scaleUp);
     }
+    timer.stop();
   }
   void drawPopulationGraph(float x1, float x2, float y1, float y2) {
+    timer.start();
     float barWidth = (x2-x1)/((float)(POPULATION_HISTORY_LENGTH));
     noStroke();
     fill(0.33333, 1, 0.6);
@@ -305,6 +311,7 @@ class Board {
       float h = (((float)populationHistory[i])/maxPopulation)*(y2-770);
       rect((POPULATION_HISTORY_LENGTH-1-i)*barWidth, y2-h, barWidth, h);
     }
+    timer.stop();
   }
   String getNextFileName(int type) {
     String[] modes = {"manualImgs", "autoImgs", "manualTexts", "autoTexts"};
@@ -315,6 +322,7 @@ class Board {
     return folder+"/"+modes[type]+"/"+nf(fileSaveCounts[type], 5)+ending;
   }
   public void iterate(double timeStep) {
+    timer.start();
     double prevYear = year;
     year += timeStep;
     if (Math.floor(year/recordPopulationEvery) != Math.floor(prevYear/recordPopulationEvery)) {
@@ -386,8 +394,11 @@ class Board {
       }
     }
     finishIterate(timeStep);
+    timer.stop();
+    timer.printAllTimings();
   }
   public void finishIterate(double timeStep) {
+    timer.start();
     for (int i = 0; i < rocks.size(); i++) {
       rocks.get(i).applyMotions(timeStep*OBJECT_TIMESTEPS_PER_YEAR);
     }
@@ -401,6 +412,7 @@ class Board {
     if (Math.floor(fileSaveTimes[3]/textSaveInterval) != Math.floor(year/textSaveInterval)) {
       prepareForFileSave(3);
     }
+    timer.stop();
   }
   private double getGrowthRate(double theTime) {
     double temperatureRange = MAX_TEMPERATURE-MIN_TEMPERATURE;
