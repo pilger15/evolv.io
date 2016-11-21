@@ -10,10 +10,11 @@ class Board {
   int creatureMinimum;
   final float MIN_CREATURE_ENERGY = 1.2;
   final float MAX_CREATURE_ENERGY = 2.0;
-  final float MINIMUM_SURVIVABLE_SIZE = 0.06;
+  final float MINIMUM_SURVIVABLE_SIZE = 0.06; // radius not energy
   final float CREATURE_STROKE_WEIGHT = 0.6;
   ArrayList[][] softBodiesInPositions;
   ArrayList<Creature> creatures;
+  String[] networkType = {"Normal", "Elman", "Jordan"};
   Creature selectedCreature = null;
   int creatureIDUpTo = 0;
   private int creatureRankMetric = 0;
@@ -50,8 +51,8 @@ class Board {
   // Saving
   int[] fileSaveCounts;
   double[] fileSaveTimes;
-  double imageSaveInterval = 1;
-  double textSaveInterval = 1;
+  double imageSaveInterval = 1024;
+  double textSaveInterval = 1024;
 
   // Misc or Unsorted
   final color BACKGROUND_COLOR = color(0, 0, 0.1);
@@ -59,10 +60,12 @@ class Board {
   String folder = "TEST";
   final double FLASH_SPEED = 80;
   boolean userControl;
+  int brainx = -840;
+  int brainy = 15;
+  int brainFontSize = 30;
+  static final int playSpeedDrawLimit = 512;
 
-  final String[] sorts = {"Biggest", "Smallest", "Youngest", "Oldest", "A to Z", "Z to A", "Highest Gen", "Lowest Gen"};
-
-
+  final String[] sorts = {"Biggest", "Smallest", "Youngest", "Oldest", "A to Z", "Z to A", "Highest Gen", "Lowest Gen", "Kills", "Meat Eaten"};
   public Board(int w, int h, float stepSize, float min, float max, int rta, int cm, int SEED, String INITIAL_FILE_NAME, double ts) {
     noiseSeed(SEED);
     randomSeed(SEED);
@@ -108,7 +111,7 @@ class Board {
       fileSaveCounts[i] = 0;
       fileSaveTimes[i] = -999;
     }
-    userControl = true;
+    userControl = false;
     timeStep = ts;
     populationHistory = new int[POPULATION_HISTORY_LENGTH];
     for (int i = 0; i < POPULATION_HISTORY_LENGTH; i++) {
@@ -117,16 +120,18 @@ class Board {
   }
 
   public void drawBoard(float scaleUp, float camZoom, int mX, int mY) {
-    for (int x = 0; x < boardWidth; x++) {
-      for (int y = 0; y < boardHeight; y++) {
-        tiles[x][y].drawTile(scaleUp, (mX == x && mY == y));
+    if (playSpeed <= playSpeedDrawLimit) {
+      for (int x = 0; x < boardWidth; x++) {
+        for (int y = 0; y < boardHeight; y++) {
+          tiles[x][y].drawTile(scaleUp, (mX == x && mY == y), camZoom);
+        }
       }
-    }
-    for (int i = 0; i < rocks.size(); i++) {
-      rocks.get(i).drawSoftBody(scaleUp);
-    }
-    for (int i = 0; i < creatures.size(); i++) {
-      creatures.get(i).drawSoftBody(scaleUp, camZoom, true);
+      for (int i = 0; i < rocks.size(); i++) {
+        rocks.get(i).drawSoftBody(scaleUp);
+      }
+      for (int i = 0; i < creatures.size(); i++) {
+        creatures.get(i).drawSoftBody(scaleUp, camZoom, true);
+      }
     }
   }
 
@@ -157,57 +162,58 @@ class Board {
     text(seasons[(int)(getSeason() * 4)] + "\nSeed: " + SEED, seasonTextXCoor, 30);
 
     if (selectedCreature == null) {
-      for (int i = 0; i < LIST_SLOTS; i++) {
-        list[i] = null;
-      }
-      for (int i = 0; i < creatures.size(); i++) {
-        int lookingAt = 0;
-        boolean done = false;
-        while (lookingAt < LIST_SLOTS && list[lookingAt] != null & !done) {
-          if (creatureRankMetric == 4 && list[lookingAt].name.compareTo(creatures.get(i).name) < 0) {
+      if (playSpeed <= playSpeedDrawLimit) {
+        for (int i = 0; i < LIST_SLOTS; i++) {
+          list[i] = null;
+        }
+        for (int i = 0; i < creatures.size(); i++) {
+          int lookingAt = 0;
+          boolean done = false;
+          while (lookingAt < LIST_SLOTS && list[lookingAt] != null & !done) {
+            if (creatureRankMetric == 4 && list[lookingAt].name.compareTo(creatures.get(i).name) < 0) {
               lookingAt++;
-          } else if (creatureRankMetric == 5 && list[lookingAt].name.compareTo(creatures.get(i).name) >= 0) {
+            } else if (creatureRankMetric == 5 && list[lookingAt].name.compareTo(creatures.get(i).name) >= 0) {
               lookingAt++;
-          } else if (list[lookingAt].measure(creatureRankMetric) > creatures.get(i).measure(creatureRankMetric)) {
+            } else if (list[lookingAt].measure(creatureRankMetric) > creatures.get(i).measure(creatureRankMetric)) {
               lookingAt++;
-          } else {
-            done = true;
+            } else {
+              done = true;
+            }
+          }
+          if (lookingAt < LIST_SLOTS) {
+            for (int j = LIST_SLOTS - 1; j >= lookingAt + 1; j--) {
+              list[j] = list[j - 1];
+            }
+            list[lookingAt] = creatures.get(i);
           }
         }
-
-        if (lookingAt < LIST_SLOTS) {
-          for (int j = LIST_SLOTS - 1; j >= lookingAt + 1; j--) {
-            list[j] = list[j - 1];
+        double maxEnergy = 0;
+        for (int i = 0; i < LIST_SLOTS; i++) {
+          if (list[i] != null && list[i].energy > maxEnergy) {
+            maxEnergy = list[i].energy;
           }
-          list[lookingAt] = creatures.get(i);
         }
-      }
-      double maxEnergy = 0;
-      for (int i = 0; i < LIST_SLOTS; i++) {
-        if (list[i] != null && list[i].energy > maxEnergy) {
-          maxEnergy = list[i].energy;
-        }
-      }
-      for (int i = 0; i < LIST_SLOTS; i++) {
-        if (list[i] != null) {
-          list[i].preferredRank += (i - list[i].preferredRank) * 0.4;
-          float y = y1 + 175 + 70 * list[i].preferredRank;
-          drawCreature(list[i], 45, y + 5, 2.3, scaleUp);
-          textFont(font, 24);
-          textAlign(LEFT);
-          noStroke();
-          fill(0.333, 1, 0.4);
-          float multi = (x2 - x1 - 200);
-          if (list[i].energy > 0) {
-            rect(85, y + 5, (float)(multi * list[i].energy / maxEnergy), 25);
+        for (int i = 0; i < LIST_SLOTS; i++) {
+          if (list[i] != null) {
+            list[i].preferredRank += (i - list[i].preferredRank) * 0.4;
+            float y = y1 + 175 + 70 * list[i].preferredRank;
+            drawCreature(list[i], 45, y + 5, 2.3, scaleUp);
+            textFont(font, 24);
+            textAlign(LEFT);
+            noStroke();
+            fill(0.333, 1, 0.4);
+            float multi = (x2 - x1 - 200);
+            if (list[i].energy > 0) {
+              rect(85, y + 5, (float)(multi * list[i].energy / maxEnergy), 25);
+            }
+            if (list[i].energy > 1) {
+              fill(0.333, 1, 0.8);
+              rect(85+(float)(multi / maxEnergy), y + 5, (float)(multi * (list[i].energy - 1) / maxEnergy), 25);
+            }
+            fill(0, 0, 1);
+            text(list[i].getCreatureName() + " [" + list[i].id + "] (" + toAge(list[i].birthTime) + ") ["+ networkType[list[i].networkType] + "] [Meat : " + (nf(100* (float)list[i].meatEaten, 0, 2)) + "] [Kills : " + (nf((float)list[i].creaturesKilled, 0, 0)) + "]", 90, y);
+            text("Energy: " + nf(100 * (float)(list[i].energy), 0, 2), 90, y + 25);
           }
-          if (list[i].energy > 1) {
-            fill(0.333, 1, 0.8);
-            rect(85+(float)(multi / maxEnergy), y + 5, (float)(multi * (list[i].energy - 1) / maxEnergy), 25);
-          }
-          fill(0, 0, 1);
-          text(list[i].getCreatureName() + " [" + list[i].id + "] (" + toAge(list[i].birthTime) + ")", 90, y);
-          text("Energy: " + nf(100 * (float)(list[i].energy), 0, 2), 90, y + 25);
         }
       }
       noStroke();
@@ -220,10 +226,10 @@ class Board {
       text("Sort by: " + sorts[creatureRankMetric], 350, 123);
 
       textFont(font, 19);
-      String[] buttonTexts = {"Brain Control", "Maintain pop. at " + creatureMinimum,
-        "Screenshot now", "-   Image every " + nf((float)imageSaveInterval, 0, 2) + " years   +",
-        "Text file now", "-    Text every " + nf((float)textSaveInterval, 0, 2) + " years    +",
-        "-    Play Speed (" + playSpeed + "x)    +", "This button does nothing"};
+      String[] buttonTexts = {"Brain Control", "Maintain pop. at " + creatureMinimum, 
+        "Screenshot now", "-   Image every " + nf((float)imageSaveInterval, 0, 0) + " years   +", 
+        "Text file now", "-    Text every " + nf((float)textSaveInterval, 0, 2) + " years    +", 
+        "-    Play Speed (" + playSpeed + "x)    +", "+    Water Level    -"};
       if (userControl) {
         buttonTexts[0] = "Keyboard Control";
       }
@@ -267,6 +273,10 @@ class Board {
       text("Energy: " + nf(100 * (float)selectedCreature.energy, 0, 2) + " yums", 10, 250);
       text("E Change: " + nf(100 * energyUsage, 0, 2) + " yums/year", 10, 275);
 
+      text("Meat eaten: " + nf(100 * (float)selectedCreature.meatEaten, 0, 2) + " yums", 300, 250);
+      text("Creatures killed: " + nf(selectedCreature.creaturesKilled, 0, 0), 300, 275);
+      text("Brain: " + networkType[selectedCreature.networkType], 300, 300);
+
       text("ID: " + selectedCreature.id, 10, 325);
       text("X: " + nf((float)selectedCreature.px, 0, 2), 10, 350);
       text("Y: " + nf((float)selectedCreature.py, 0, 2), 10, 375);
@@ -283,10 +293,10 @@ class Board {
           "\nI, K: Change mouth color\nB: Give birth (Not possible if under " + Math.round((MANUAL_BIRTH_SIZE + 1) * 100) + " yums)", 10, 625, 250, 400);
       }
       pushMatrix();
-      translate(400, 80);
+      translate(brainx, brainy);
       float apX = round((mouseX - 400 - x1) / 46.0);
       float apY = round((mouseY - 80 - y1) / 46.0);
-      selectedCreature.drawBrain(font, 46, (int)apX, (int)apY);
+      selectedCreature.drawBrain(font, brainFontSize, (int)apX, (int)apY);
       popMatrix();
     }
     drawPopulationGraph(x1, x2, y1, y2);
@@ -314,13 +324,22 @@ class Board {
     noStroke();
     fill(0.33333, 1, 0.6);
     int maxPopulation = 0;
-    for (int i = 0; i < POPULATION_HISTORY_LENGTH; i++) {
+    double averagePopulation = 0;
+    int i =0;
+    for (i= 0; i < POPULATION_HISTORY_LENGTH; i++) {
       if (populationHistory[i] > maxPopulation) {
         maxPopulation = populationHistory[i];
+        averagePopulation += populationHistory[i];
       }
+      averagePopulation /= i;
+      if(populationHistory[populationHistory.length -1] > averagePopulation*1.2)
+      {
+        fill(1, 1, 0.6);
+      }
+      
     }
-    for (int i = 0; i < POPULATION_HISTORY_LENGTH; i++) {
-      float h = (((float)populationHistory[i]) / maxPopulation) * (y2 - 770);
+    for (i = 0; i < POPULATION_HISTORY_LENGTH; i++) {
+      float h = ((((float)populationHistory[i]) / maxPopulation) * (y2 - 770))/2;
       rect((POPULATION_HISTORY_LENGTH - 1 - i) * barWidth, y2 - h, barWidth, h);
     }
   }
@@ -370,6 +389,14 @@ class Board {
       me.collide(timeStep);
       me.metabolize(timeStep);
       me.useBrain(timeStep, !userControl);
+
+      // force reproduction
+      //if (me.energy >= me.SAFE_SIZE * 1.5) {
+       // me.reproduce(me.SAFE_SIZE, timeStep);
+      //}
+
+
+
       if (userControl) {
         if (me == selectedCreature) {
           if (keyPressed) {
@@ -379,9 +406,9 @@ class Board {
               if (keyCode == LEFT) me.turn(-0.1, timeStep * OBJECT_TIMESTEPS_PER_YEAR);
               if (keyCode == RIGHT) me.turn(0.1, timeStep * OBJECT_TIMESTEPS_PER_YEAR);
             } else {
-              if (key == ' ') me.eat(0.1, timeStep * OBJECT_TIMESTEPS_PER_YEAR);
+              if (key == ' ') me.eat(1, timeStep);
               if (key == 'v' || key == 'V') me.eat(-0.1, timeStep * OBJECT_TIMESTEPS_PER_YEAR);
-              if (key == 'f' || key == 'F')  me.fight(0.5, timeStep * OBJECT_TIMESTEPS_PER_YEAR);
+              if (key == 'f' || key == 'F')  me.fight(0.5, timeStep); 
               if (key == 'u' || key == 'U') me.setHue(me.hue + 0.02);
               if (key == 'j' || key == 'J') me.setHue(me.hue - 0.02);
 
@@ -531,7 +558,7 @@ class Board {
       } else {
         creatures.add(new Creature(random(0, boardWidth), random(0, boardHeight), 0, 0, 
           random(MIN_CREATURE_ENERGY, MAX_CREATURE_ENERGY), 1, random(0, 1), 1, 1, 
-          this, year, random(0, 2 * PI), 0, "", "[PRIMORDIAL]", true, null, null, 1, random(0, 1)));
+          this, year, random(0, 2 * PI), 0, "", "[PRIMORDIAL]", true, null, null, 1, random(0, 1), (int)random(0, 3)));
       }
     }
   }
@@ -572,15 +599,14 @@ class Board {
       }
     }
   }
-  
+
   public void incrementSort() {
     evoBoard.creatureRankMetric = (evoBoard.creatureRankMetric + 1) % sorts.length;
   }
-  
+
   public void decrementSort() {
     evoBoard.creatureRankMetric = (evoBoard.creatureRankMetric + sorts.length - 1) % sorts.length;
   }
-
   public String[] toBigString() { // Convert current evolvio board into string. Does not work
     String[] placeholder = {"Goo goo", "Ga ga"};
     return placeholder;

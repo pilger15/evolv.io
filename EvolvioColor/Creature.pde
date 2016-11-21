@@ -1,33 +1,40 @@
 class Creature extends SoftBody {
   // Energy
-  double ACCELERATION_ENERGY = 0.18;
-  double ACCELERATION_BACK_ENERGY = 0.24;
-  double SWIM_ENERGY = 0.008;
-  double TURN_ENERGY = 0.05;
-  double EAT_ENERGY = 0.05;
-  double EAT_SPEED = 0.5; // 1 is instant, 0 is nonexistent, 0.001 is verrry slow.
-  double EAT_WHILE_MOVING_INEFFICIENCY_MULTIPLIER = 2.0; // The bigger this number is, the less effiently creatures eat when they're moving.
-  double FIGHT_ENERGY = 0.06;
-  double INJURED_ENERGY = 0.25;
-  double METABOLISM_ENERGY = 0.004;
-  double AGE_FACTOR = 1; // 0 no ageing
+  static final double ACCELERATION_ENERGY = 0.18;
+  static final double ACCELERATION_BACK_ENERGY = 0.24;
+  static final double SWIM_ENERGY = 0.008;
+  static final double TURN_ENERGY = 0.05;
+  static final double EAT_ENERGY = 0.05;
+  static final double EAT_SPEED = 0.5; // 1 is instant, 0 is nonexistent, 0.001 is verrry slow.
+  static final double EAT_WHILE_MOVING_INEFFICIENCY_MULTIPLIER = 2.0; // The bigger this number is, the less effiently creatures eat when they're moving.
+  static final double FIGHT_ENERGY = EAT_ENERGY*5;
+  static final double INJURED_ENERGY = FIGHT_ENERGY * 3;
+  static final double METABOLISM_ENERGY = 0.004;
+  static final double AGE_FACTOR = 1; // how much does age effect metabolism (1 = no effect)
+  static final int ENERGY_HISTORY_LENGTH = 6;
+  static final float REPRODUCTION_DIFFERENCE = 1; // determine how different species can be for reproduction, > 1 means  no limitation
   double currentEnergy;
-  final int ENERGY_HISTORY_LENGTH = 6;
+
   double[] previousEnergy = new double[ENERGY_HISTORY_LENGTH];
+
+  double meatEaten = 0;
+  int creaturesKilled = 0;
 
   // Family
   String name;
   String parents;
   int gen;
   int id;
+  int kids = 0;
 
   // Vision or View or Preference
-  double MAX_VISION_DISTANCE = 10;
+  static final double MAX_VISION_DISTANCE = 2;
+  static final double MIN_VISION_DISTANCE = 0.3;
   final double STARTING_AXON_VARIABILITY = 1.0;
   final double FOOD_SENSITIVITY = 0.3;
-  final double MAX_DETAILED_ZOOM = 3.5; // Maximum zoom to draw details at
-  double[] visionAngles = {0, -0.4, 0.4};
-  double[] visionDistances = {0, 0.7, 0.7};
+  static final double MAX_DETAILED_ZOOM = 3.5; // Maximum zoom to draw details at
+  double[] visionAngles = {-0.4, 0.4};
+  double[] visionDistances = {0.7, 0.7};
   //double visionAngle;
   //double visionDistance;
   double[] visionOccludedX = new double[visionAngles.length];
@@ -35,6 +42,8 @@ class Creature extends SoftBody {
   double visionResults[] = new double[9];
 
   // Brain
+  int networkType = 0; // 0 = default, 1 = Elman, 2 = Jordan
+  static final double NET_MUTATION_CHANCE = 0.01; // default 1%
   final int BRAIN_WIDTH = 3;
   final int BRAIN_HEIGHT = 13;
   final double AXON_START_MUTABILITY = 0.0005;
@@ -58,7 +67,7 @@ class Creature extends SoftBody {
   public Creature(double tpx, double tpy, double tvx, double tvy, double tenergy, 
     double tdensity, double thue, double tsaturation, double tbrightness, Board tb, double bt, 
     double rot, double tvr, String tname, String tparents, boolean mutateName, 
-    Axon[][][] tbrain, double[][] tneurons, int tgen, double tmouthHue) {
+    Axon[][][] tbrain, double[][] tneurons, int tgen, double tmouthHue, int tNetworkType) {
 
     super(tpx, tpy, tvx, tvy, tenergy, tdensity, thue, tsaturation, tbrightness, tb, bt);
     if (tbrain == null) {
@@ -115,6 +124,15 @@ class Creature extends SoftBody {
     }
     gen = tgen;
     mouthHue = tmouthHue;
+    hue = setHue(calcSpecies());
+    
+    // Randomly select neural Network type 0 default, 1 Elman, 2 Jordan
+    if(Math.random() > NET_MUTATION_CHANCE){ // times three because the netwok coul mutate into itself
+      networkType = tNetworkType;
+    }else{
+      networkType = ((tNetworkType+(int)(Math.random()*2))+1)%3;
+    }
+    
   }
 
   public void drawBrain(PFont font, float scaleUp, int mX, int mY) {
@@ -127,10 +145,10 @@ class Creature extends SoftBody {
     strokeWeight(2);
     textFont(font, 0.58 * scaleUp);
     fill(0, 0, 1);
-    String[] inputLabels = {"0Hue", "0Sat", "0Bri", "1Hue", 
-      "1Sat", "1Bri", "2Hue", "2Sat", "2Bri", "Size", "MHue", "Mem", "Const."};
-    String[] outputLabels = {"BHue", "Accel.", "Turn", "Eat", "Fight", "Birth", "How funny?", 
-      "How popular?", "How generous?", "How smart?", "MHue", "Mem", "Const."};
+    String[] inputLabels = {"0Hue", "0Sat", "0Bri", "1Hue",
+  "1Sat", "1Bri", "0Dist", "1Dist","MHue", "Touch" ,"Size", "Mem", "Const."};
+    String[] outputLabels = {"", "Accel.", "Turn", "Eat", "Fight", 
+  "Birth", "0VAngle", "1VAngle", "0VDist", "1VDist", "MHue", "Mem", "Const."};
     for (int y = 0; y < BRAIN_HEIGHT; y++) {
       textAlign(RIGHT);
       text(inputLabels[y], (-neuronSize - 0.1) * scaleUp, (y + (neuronSize * 0.6)) * scaleUp);
@@ -166,19 +184,39 @@ class Creature extends SoftBody {
     line(x1 * scaleUp, y1 * scaleUp, x2 * scaleUp, y2 * scaleUp);
   }
 
-  public void useBrain(double timeStep, boolean useOutput) {
-    for (int i = 0; i < 9; i++) {
+/*
+{"0Hue", "0Sat", "0Bri", "1Hue",
+  "1Sat", "1Bri", "0Dist", "1Dist","MHue", "Touch" ,"Size", "Mem", "Const."};
+*/
+  private void calcBrain() {
+    for (int i = 0; i < visionResults.length; i++) {
       neurons[0][i] = visionResults[i];
     }
-    neurons[0][9] = energy;
-    neurons[0][10] = mouthHue;
+    
+    neurons[0][6] = getOcclusionDist(0);
+    neurons[0][7] = getOcclusionDist(1);
+    neurons[0][8] = mouthHue;
+    neurons[0][9] = colliders.size();
+    neurons[0][10] = energy;
+
     for (int i = 0; i < MEMORY_COUNT; i++) {
-      neurons[0][11 + i] = memories[i];
+     neurons[0][11 + i] = memories[i];
     }
+    double total;
     for (int x = 1; x < BRAIN_WIDTH; x++) {
       for (int y = 0; y < BRAIN_HEIGHT-1; y++) {
-        double total = 0;
+        total = 0;
         for (int input = 0; input < BRAIN_HEIGHT; input++) {
+          if (x < BRAIN_WIDTH - 1) { // hiden layers
+            switch(networkType) {
+            case 1:// Elman Network: add hiddenlayer from last iteration
+              total += neurons[x][y] * axons[x - 1][input][y].weight;
+              break;
+            case 2:// Jordan Network add output from last iteration
+              total += neurons[BRAIN_WIDTH - 1][y] * axons[x - 1][input][y].weight;
+              break;
+            }
+          }
           total += neurons[x - 1][input] * axons[x - 1][input][y].weight;
         }
         if (x == BRAIN_WIDTH - 1) {
@@ -188,16 +226,28 @@ class Creature extends SoftBody {
         }
       }
     }
+  }
+
+  public void useBrain(double timeStep, boolean useOutput) {
+    calcBrain();
     if (useOutput) {
       int end = BRAIN_WIDTH - 1;
-      hue = Math.abs(neurons[end][0]) % 1.0;
+      //hue = Math.abs(neurons[end][0]) % 1.0;
       accelerate(neurons[end][1], timeStep);
       turn(neurons[end][2], timeStep);
       eat(neurons[end][3], timeStep);
-      fight(neurons[end][4], timeStep * 100);
+      fight(neurons[end][4], timeStep);
       if (neurons[end][5] > 0 && board.year-birthTime >= MATURE_AGE && energy > SAFE_SIZE) {
         reproduce(SAFE_SIZE, timeStep);
       }
+      // vision Outputs
+      for (int i = 0; i < visionAngles.length; i++) {
+        neurons[end][6 + i] = Math.abs(neurons[end][6 + i] %MAX_VISION_DISTANCE);
+        neurons[end][6 + i + 2] = Math.abs(neurons[end][6 + i + 2] %MAX_VISION_DISTANCE);
+        //setVisionAngle(neurons[end][6 + i], i);// = -1:1 //Neuron 6 and 7
+        //setVisionDistance(neurons[end][6 + i + 2], i); //0:10 //Neuron 8 and 9
+      }
+
       mouthHue = Math.abs(neurons[end][10]) % 1.0;
       for (int i = 0; i < MEMORY_COUNT; i++) {
         memories[i] = neurons[end][11 + i];
@@ -240,7 +290,7 @@ class Creature extends SoftBody {
     stroke(0, 0, 1);
     fill(0, 0, 1);
     if (this == board.selectedCreature) {
-      ellipse((float)(px * scaleUp), (float)(py * scaleUp),
+      ellipse((float)(px * scaleUp), (float)(py * scaleUp), 
         (float)(radius * scaleUp + 1 + 75.0 / camZoom), (float)(radius * scaleUp + 1 + 75.0 / camZoom));
     }
     super.drawSoftBody(scaleUp);
@@ -296,12 +346,12 @@ class Creature extends SoftBody {
     ellipse(0.6 * scaleUp, 0, 0.37 * scaleUp, 0.37 * scaleUp);
     popMatrix();
   }
-  
+
   public void metabolize(double timeStep) {
     double age = AGE_FACTOR * (board.year - birthTime); // the older the more work necessary
-    loseEnergy(energy * METABOLISM_ENERGY * age * timeStep);
+    loseEnergy(energy * METABOLISM_ENERGY * timeStep * age);
   }
-  
+
   public void accelerate(double amount, double timeStep) {
     double multiplied = amount * timeStep / getMass();
     vx += Math.cos(rotation) * multiplied;
@@ -343,7 +393,7 @@ class Creature extends SoftBody {
         foodToEat = coveredTile.foodLevel;
       }
       coveredTile.removeFood(foodToEat, true);
-      double foodDistance = Math.abs(coveredTile.foodType - mouthHue);
+      double foodDistance = Math.abs(coveredTile.climateType - mouthHue);
       double multiplier = 1.0 - foodDistance / FOOD_SENSITIVITY;
       if (multiplier >= 0) {
         addEnergy(foodToEat * multiplier);
@@ -354,22 +404,38 @@ class Creature extends SoftBody {
     }
   }
 
-  public void fight(double amount, double timeStep) {
-    if (amount > 0 && board.year-birthTime >= MATURE_AGE) {
-      fightLevel = amount;
-      loseEnergy(fightLevel * FIGHT_ENERGY * energy * timeStep);
+  public void fight(double set, double timeStep) {
+    fightLevel = set;
+
+    if (fightLevel > 0 && board.year-birthTime >= MATURE_AGE) {
+      double fightEnergy = fightLevel * FIGHT_ENERGY * timeStep;
+      double injuredEnergy;
+
+
+      loseEnergy(fightEnergy); // lost energy was dependent on creatures energy which made it inefficient for big creatures
+
+
       for (int i = 0; i < colliders.size(); i++) {
         SoftBody collider = colliders.get(i);
         if (collider.isCreature) {
           float distance = dist((float)px, (float)py, (float)collider.px, (float)collider.py);
           double combinedRadius = getRadius() * FIGHT_RANGE + collider.getRadius();
+
           if (distance < combinedRadius) {
-            ((Creature)collider).dropEnergy(fightLevel * INJURED_ENERGY * timeStep);
+            if (((Creature)collider).energy >= 1.03) {// attack and eat
+              injuredEnergy = fightLevel * INJURED_ENERGY * timeStep;
+              ((Creature)collider).loseEnergy(injuredEnergy);
+              addEnergy(injuredEnergy); //make carnivourism worthy
+              meatEaten += injuredEnergy;
+            } else {//eat fully 
+              addEnergy(((Creature)collider).energy); //make carnivourism worthy eat whole body on timestep
+              meatEaten += ((Creature)collider).energy;
+              creaturesKilled += 1;
+              ((Creature)collider).energy = 0.001;
+            }
           }
         }
       }
-    } else {
-      fightLevel = 0;
     }
   }
 
@@ -402,6 +468,7 @@ class Creature extends SoftBody {
       visionResults[k * 3] = hue(c);
       visionResults[k * 3 + 1] = saturation(c);
       visionResults[k * 3 + 2] = brightness(c);
+      
 
       int tileX = 0;
       int tileY = 0;
@@ -515,6 +582,7 @@ class Creature extends SoftBody {
         double newSaturation = 0;
         double newBrightness = 0;
         double newMouthHue = 0;
+        int newNetworkType = 0;
         int parentsTotal = parents.size();
         String[] parentNames = new String[parentsTotal];
         Axon[][][] newBrain = new Axon[BRAIN_WIDTH - 1][BRAIN_HEIGHT][BRAIN_HEIGHT - 1];
@@ -548,6 +616,7 @@ class Creature extends SoftBody {
           newBrightness += parent.brightness / parentsTotal;
           newMouthHue += parent.mouthHue / parentsTotal;
           parentNames[i] = parent.name;
+          newNetworkType = parent.networkType;
           if (parent.gen > highestGen) {
             highestGen = parent.gen;
           }
@@ -557,10 +626,10 @@ class Creature extends SoftBody {
         board.creatures.add(new Creature(newPX, newPY, 0, 0, 
           babySize, density, newHue, newSaturation, newBrightness, board, board.year, random(0, 2 * PI), 0,
           stitchName(parentNames), andifyParents(parentNames), true, 
-          newBrain, newNeurons, highestGen + 1, newMouthHue));
+          newBrain, newNeurons, highestGen + 1, newMouthHue, newNetworkType));
       }
     }
-  }
+}
 
   public String stitchName(String[] s) {
     String result = "";
@@ -628,14 +697,36 @@ class Creature extends SoftBody {
       return sign * birthTime;
     } else if (choice == 6 || choice == 7) {
       return sign * gen;
+    } else if (choice == 8) {
+      return sign * creaturesKilled;
+    } else if (choice == 9) {
+      return meatEaten;
     }
     return 0;
   }
-  
-  
 
-  public void setHue(double set) {
+  public double calcSpecies()
+  {
+    //Math.abs(neurons[end][10]) % 1.0;
+    double sum = 0;
+    int x = 1; // prevent div by 0
+    int y = 1;
+    int z = 1;
+    for (x = 0; x < BRAIN_WIDTH - 1; x++) {
+      for (y = 0; y < BRAIN_HEIGHT; y++) {
+        for (z = 0; z < BRAIN_HEIGHT - 1; z++) {
+          sum += axons[x][y][z].weight;
+        }
+      }
+    }
+
+    return (Math.abs(sum/(x+y+z))) % 1.0;
+  }
+
+
+  public double setHue(double set) {
     hue = Math.min(Math.max(set, 0), 1);
+    return hue;
   }
 
   public void setMouthHue(double set) {
@@ -650,18 +741,18 @@ class Creature extends SoftBody {
     brightness = Math.min(Math.max(set, 0), 1);
   }
 
-  /*public void setVisionAngle(double set) {
-   visionAngle = set;//Math.min(Math.max(set, -Math.PI/2), Math.PI/2);
-   while(visionAngle < -Math.PI) {
-   visionAngle += Math.PI*2;
+  public void setVisionAngle(double set, int i) {
+   visionAngles[i] = set;//Math.min(Math.max(set, -Math.PI/2), Math.PI/2);
+   while(visionAngles[i] < -Math.PI) {
+   visionAngles[i] += Math.PI*2;
    }
-   while(visionAngle > Math.PI) {
-   visionAngle -= Math.PI*2;
+   while(visionAngles[i] > Math.PI) {
+   visionAngles[i] -= Math.PI*2;
    }
    }
-   public void setVisionDistance(double set) {
-   visionDistance = Math.min(Math.max(set, 0), MAX_VISION_DISTANCE);
-   }*/
+   public void setVisionDistance(double set, int i) {
+   visionDistances[i] = Math.abs(set % MAX_VISION_DISTANCE);//Math.min(Math.max(set, MIN_VISION_DISTANCE), MAX_VISION_DISTANCE);
+   }
   /*public double getVisionStartX() {
    return px;//+getRadius()*Math.cos(rotation);
    }
@@ -677,5 +768,8 @@ class Creature extends SoftBody {
   public double getVisionEndY(int i) {
     double visionTotalAngle = rotation + visionAngles[i];
     return py + visionDistances[i] * Math.sin(visionTotalAngle);
+  }
+  public double getOcclusionDist(int i) {    
+    return dist((float)px, (float)py, (float)(visionOccludedX[i]-px), (float)(visionOccludedY[i]-py));
   }
 }

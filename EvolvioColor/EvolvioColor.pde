@@ -1,8 +1,8 @@
 Board evoBoard;
 final int SEED = parseInt(random(1000000));
 final float NOISE_STEP_SIZE = 0.1;
-final int BOARD_WIDTH = 100;
-final int BOARD_HEIGHT = 100;
+final int BOARD_WIDTH = 30;
+final int BOARD_HEIGHT = 30;
 
 final float SCALE_TO_FIX_BUG = 100;
 
@@ -85,7 +85,6 @@ void draw() {
   evoBoard.drawBoard(SCALE_TO_FIX_BUG, zoom, (int)toWorldXCoordinate(mouseX, mouseY), (int)toWorldYCoordinate(mouseX, mouseY));
   popMatrix();
   evoBoard.drawUI(SCALE_TO_FIX_BUG, zoom, TIME_STEP, windowHeight, 0, windowWidth, windowHeight, font);
-
   evoBoard.fileSave();
   prevMouseX = mouseX;
   prevMouseY = mouseY;
@@ -114,8 +113,7 @@ void mousePressed() {
       } else if (mouseX >= windowHeight + 240 && mouseX < windowHeight + 460) {
         if (mouseButton == LEFT) {
           evoBoard.incrementSort();
-        }
-        else if (mouseButton == RIGHT){
+        } else if (mouseButton == RIGHT) {
           evoBoard.decrementSort();
         }
       }
@@ -189,8 +187,19 @@ void mousePressed() {
           }
           break;
 
-          case(7):
-          // Code for the eighth button
+          case(7)://change  waterlevel by changing fertility
+
+          for (int i = 0; i < evoBoard.boardWidth; i++) {
+            for (int j = 0; j < evoBoard.boardHeight; j++) {
+              if(clickedOnLeft){
+              evoBoard.tiles[i][j].increaseFertility();
+              }else{
+                evoBoard.tiles[i][j].decreaseFertility();
+              }
+            }
+          }
+
+          
           break;
         }
       }

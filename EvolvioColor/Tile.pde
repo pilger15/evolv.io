@@ -7,22 +7,22 @@ class Tile {
 
   private double fertility;
   private double foodLevel;
+  static final double MAX_DETAILED_ZOOM = 2.5; // zoom at which Tile-Text ist drawn
   private final float maxGrowthLevel = 3.0;
   private int posX;
   private int posY;
   private double lastUpdateTime = 0;
 
   public double climateType;
-  public double foodType;
 
   Board board;
 
   public Tile(int x, int y, double f, float food, float type, Board b) {
     posX = x;
     posY = y;
-    fertility = Math.max(0, f);
+    fertility = f;//Math.max(MIN_FERTILITY, f);
     foodLevel = Math.max(0, food);
-    climateType = foodType = type;
+    climateType  = type;
     board = b;
   }
 
@@ -35,20 +35,20 @@ class Tile {
   }
 
   public void setFertility(double f) {
-    fertility = f;
+    fertility = f;//Math.max(MIN_FERTILITY, f);;
   }
 
-  public void setFoodLevel(double f) {
-    foodLevel = f;
+  public void setFoodLevel(double food) {
+    foodLevel = Math.max(0, food);
   }
 
-  public void drawTile(float scaleUp, boolean showEnergy) {
+  public void drawTile(float scaleUp, boolean showEnergy, float camZoom) {
     stroke(0, 0, 0, 1);
     strokeWeight(2);
     color landColor = getColor();
     fill(landColor);
     rect(posX * scaleUp, posY * scaleUp, scaleUp, scaleUp);
-    if (showEnergy) {
+    if (showEnergy && camZoom > MAX_DETAILED_ZOOM && fertility < 1) {
       if (brightness(landColor) >= 0.7) {
         fill(0, 0, 0, 1);
       } else {
@@ -57,8 +57,7 @@ class Tile {
       textAlign(CENTER);
       textFont(font, 21);
       text(nf((float)(100 * foodLevel), 0, 2) + " yums", (posX + 0.5) * scaleUp, (posY + 0.3) * scaleUp);
-      text("Clim: " + nf((float)(climateType), 0, 2), (posX + 0.5) * scaleUp, (posY + 0.6) * scaleUp);
-      text("Food: " + nf((float)(foodType), 0, 2), (posX + 0.5) * scaleUp, (posY + 0.9) * scaleUp);
+      text("Food: " + nf((float)(climateType), 0, 2), (posX + 0.5) * scaleUp, (posY + 0.9) * scaleUp);
     }
   }
   public void iterate() {
@@ -90,13 +89,13 @@ class Tile {
       lastUpdateTime = updateTime;
     }
   }
-  public void addFood(double amount, double addedFoodType, boolean canCauseIteration) {
+  public void addFood(double amount, double addedclimateType, boolean canCauseIteration) {
     if (canCauseIteration) {
       iterate();
     }
     foodLevel += amount;
     /*if (foodLevel > 0) {
-     foodType += (addedFoodType - foodType) * (amount / foodLevel); // We're adding new plant growth, so we gotta "mix" the colors of the tile.
+     climateType += (addedclimateType - climateType) * (amount / foodLevel); // We're adding new plant growth, so we gotta "mix" the colors of the tile.
      }*/
   }
   public void removeFood(double amount, boolean canCauseIteration) {
@@ -107,7 +106,7 @@ class Tile {
   }
   public color getColor() {
     iterate();
-    color foodColor = color((float)(foodType), 1, 1);
+    color foodColor = color((float)(climateType), 1, 1);
     if (fertility > 1) {
       return waterColor;
     } else if (foodLevel < maxGrowthLevel) {
@@ -133,5 +132,11 @@ class Tile {
   }
   public double inter(double a, double b, double x) {
     return a + (b - a) * x;
+  }
+  public void increaseFertility(){
+    fertility += 0.1;
+  }
+    public void decreaseFertility(){
+    fertility -= 0.1;
   }
 }

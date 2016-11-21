@@ -14,6 +14,7 @@ class SoftBody {
   final float FRICTION = 0.004;
   final float COLLISION_FORCE = 0.01;
   final float FIGHT_RANGE = 2.0;
+  final double SCALE = 0.25;
   double fightLevel = 0;
 
   int prevSBIPMinX;
@@ -42,11 +43,11 @@ class SoftBody {
     setSBIP(false);
     setSBIP(false); // Just to set previous SBIPs as well.
     birthTime = bt;
-    ENERGY_DENSITY = 1.0 / (tb.MINIMUM_SURVIVABLE_SIZE * tb.MINIMUM_SURVIVABLE_SIZE * PI);
+    ENERGY_DENSITY = 1 / (tb.MINIMUM_SURVIVABLE_SIZE * tb.MINIMUM_SURVIVABLE_SIZE * PI);
   }
 
   public void setSBIP(boolean shouldRemove) {
-    double radius = getRadius() * FIGHT_RANGE;
+    double radius = getRadius() * FIGHT_RANGE * SCALE;
     prevSBIPMinX = SBIPMinX;
     prevSBIPMinY = SBIPMinY;
     prevSBIPMaxX = SBIPMaxX;
