@@ -567,7 +567,7 @@ class Creature extends SoftBody {
       for (int i = 0; i < colliders.size(); i++) {
         SoftBody possibleParent = colliders.get(i);
         if (possibleParent.isCreature && ((Creature)possibleParent).neurons[BRAIN_WIDTH-1][9] > -1 && 
-          (hue >= possibleParent.hue - REPRODUCTION_DIFFERENCE && hue <= possibleParent.hue + REPRODUCTION_DIFFERENCE)) { // Must be a WILLING creature to also give birth.
+          (hue >= (possibleParent.hue - REPRODUCTION_DIFFERENCE) %1.0 && hue <= (possibleParent.hue + REPRODUCTION_DIFFERENCE)%1.0 )) { // Must be a WILLING creature to also give birth.
           float distance = dist((float)px, (float)py, (float)possibleParent.px, (float)possibleParent.py);
           double combinedRadius = getRadius() * FIGHT_RANGE + possibleParent.getRadius();
           if (distance < combinedRadius) {
