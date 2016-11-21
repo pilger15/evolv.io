@@ -10,9 +10,9 @@ class Creature extends SoftBody {
   static final double FIGHT_ENERGY = EAT_ENERGY*5;
   static final double INJURED_ENERGY = FIGHT_ENERGY * 3;
   static final double METABOLISM_ENERGY = 0.004;
-  static final double AGE_FACTOR = 1; // how much does age effect metabolism (1 = no effect)
+  static final double AGE_FACTOR = 3; // how much does age effect metabolism (1 = no effect)
   static final int ENERGY_HISTORY_LENGTH = 6;
-  static final float REPRODUCTION_DIFFERENCE = 1; // determine how different species can be for reproduction, > 1 means  no limitation
+  static final float REPRODUCTION_DIFFERENCE = 0.9; // determine how different species can be for reproduction, > 1 means  no limitation
   double currentEnergy;
 
   double[] previousEnergy = new double[ENERGY_HISTORY_LENGTH];
@@ -127,7 +127,7 @@ class Creature extends SoftBody {
     hue = setHue(calcSpecies());
     
     // Randomly select neural Network type 0 default, 1 Elman, 2 Jordan
-    if(Math.random() > NET_MUTATION_CHANCE){ // times three because the netwok coul mutate into itself
+    if(Math.random() > NET_MUTATION_CHANCE*3){ // times three because the network could mutate into itself
       networkType = tNetworkType;
     }else{
       networkType = ((tNetworkType+(int)(Math.random()*2))+1)%3;
@@ -146,7 +146,7 @@ class Creature extends SoftBody {
     textFont(font, 0.58 * scaleUp);
     fill(0, 0, 1);
     String[] inputLabels = {"0Hue", "0Sat", "0Bri", "1Hue",
-  "1Sat", "1Bri", "0Dist", "1Dist","MHue", "Touch" ,"Size", "Mem", "Const."};
+  "1Sat", "1Bri", "0Dist", "1Dist","", "Touch" ,"Size", "Mem", "Const."};
     String[] outputLabels = {"", "Accel.", "Turn", "Eat", "Fight", 
   "Birth", "0VAngle", "1VAngle", "0VDist", "1VDist", "MHue", "Mem", "Const."};
     for (int y = 0; y < BRAIN_HEIGHT; y++) {
@@ -195,7 +195,7 @@ class Creature extends SoftBody {
     
     neurons[0][6] = getOcclusionDist(0);
     neurons[0][7] = getOcclusionDist(1);
-    neurons[0][8] = mouthHue;
+    neurons[0][8] = 0;//mouthHue;
     neurons[0][9] = colliders.size();
     neurons[0][10] = energy;
 

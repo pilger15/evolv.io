@@ -14,7 +14,7 @@ class SoftBody {
   final float FRICTION = 0.004;
   final float COLLISION_FORCE = 0.01;
   final float FIGHT_RANGE = 2.0;
-  final double SCALE = 0.25;
+  final static double TOUCH_SCALE = 0.25;
   double fightLevel = 0;
 
   int prevSBIPMinX;
@@ -47,7 +47,7 @@ class SoftBody {
   }
 
   public void setSBIP(boolean shouldRemove) {
-    double radius = getRadius() * FIGHT_RANGE * SCALE;
+    double radius = getRadius() * FIGHT_RANGE * TOUCH_SCALE;
     prevSBIPMinX = SBIPMinX;
     prevSBIPMinY = SBIPMinY;
     prevSBIPMaxX = SBIPMaxX;

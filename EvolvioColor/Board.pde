@@ -417,11 +417,12 @@ class Board {
               if (key == 'b' || key == 'B') {
                 if (!wasPressingB) {
                   me.reproduce(MANUAL_BIRTH_SIZE, timeStep);
+                  wasPressingB = true;
                 }
-                wasPressingB = true;
-              } else {
-                wasPressingB = false;
-              }
+              }else {
+                  wasPressingB = false;
+                
+                } 
             }
           }
         }
