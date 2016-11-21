@@ -192,9 +192,9 @@ void mousePressed() {
           for (int i = 0; i < evoBoard.boardWidth; i++) {
             for (int j = 0; j < evoBoard.boardHeight; j++) {
               if(clickedOnLeft){
-              evoBoard.tiles[i][j].increaseFertility();
+              evoBoard.tiles[i][j].decreaseFertility();
               }else{
-                evoBoard.tiles[i][j].decreaseFertility();
+                evoBoard.tiles[i][j].increaseFertility();
               }
             }
           }

@@ -7,12 +7,12 @@ class Creature extends SoftBody {
   static final double EAT_ENERGY = 0.05;
   static final double EAT_SPEED = 0.5; // 1 is instant, 0 is nonexistent, 0.001 is verrry slow.
   static final double EAT_WHILE_MOVING_INEFFICIENCY_MULTIPLIER = 2.0; // The bigger this number is, the less effiently creatures eat when they're moving.
-  static final double FIGHT_ENERGY = EAT_ENERGY*5;
+  static final double FIGHT_ENERGY = EAT_ENERGY*10;
   static final double INJURED_ENERGY = FIGHT_ENERGY * 3;
   static final double METABOLISM_ENERGY = 0.004;
   static final double AGE_FACTOR = 3; // how much does age effect metabolism (1 = no effect)
   static final int ENERGY_HISTORY_LENGTH = 6;
-  static final float REPRODUCTION_DIFFERENCE = 0.9; // determine how different species can be for reproduction, > 1 means  no limitation
+  static final float REPRODUCTION_DIFFERENCE = 0.1; // determine how different species can be for reproduction in percent of hue,  0 means  no difference; 1 means no limit
   double currentEnergy;
 
   double[] previousEnergy = new double[ENERGY_HISTORY_LENGTH];
@@ -566,7 +566,8 @@ class Creature extends SoftBody {
       double availableEnergy = getBabyEnergy();
       for (int i = 0; i < colliders.size(); i++) {
         SoftBody possibleParent = colliders.get(i);
-        if (possibleParent.isCreature && ((Creature)possibleParent).neurons[BRAIN_WIDTH-1][9] > -1) { // Must be a WILLING creature to also give birth.
+        if (possibleParent.isCreature && ((Creature)possibleParent).neurons[BRAIN_WIDTH-1][9] > -1 && 
+          (hue >= possibleParent.hue - REPRODUCTION_DIFFERENCE && hue <= possibleParent.hue + REPRODUCTION_DIFFERENCE)) { // Must be a WILLING creature to also give birth.
           float distance = dist((float)px, (float)py, (float)possibleParent.px, (float)possibleParent.py);
           double combinedRadius = getRadius() * FIGHT_RANGE + possibleParent.getRadius();
           if (distance < combinedRadius) {

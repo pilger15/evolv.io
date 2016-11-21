@@ -229,7 +229,7 @@ class Board {
       String[] buttonTexts = {"Brain Control", "Maintain pop. at " + creatureMinimum, 
         "Screenshot now", "-   Image every " + nf((float)imageSaveInterval, 0, 0) + " years   +", 
         "Text file now", "-    Text every " + nf((float)textSaveInterval, 0, 2) + " years    +", 
-        "-    Play Speed (" + playSpeed + "x)    +", "+    Water Level    -"};
+        "-    Play Speed (" + playSpeed + "x)    +", "-    Water Level    +"};
       if (userControl) {
         buttonTexts[0] = "Keyboard Control";
       }
@@ -391,9 +391,9 @@ class Board {
       me.useBrain(timeStep, !userControl);
 
       // force reproduction
-      //if (me.energy >= me.SAFE_SIZE * 1.5) {
-       // me.reproduce(me.SAFE_SIZE, timeStep);
-      //}
+      if (me.energy >= me.SAFE_SIZE * 5) {
+       me.reproduce(me.SAFE_SIZE, timeStep);
+      }
 
 
 
