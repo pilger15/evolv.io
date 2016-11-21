@@ -10,7 +10,7 @@ class Creature extends SoftBody {
   static final double FIGHT_ENERGY = EAT_ENERGY*10;
   static final double INJURED_ENERGY = FIGHT_ENERGY * 3;
   static final double METABOLISM_ENERGY = 0.004;
-  static final double AGE_FACTOR = 3; // how much does age effect metabolism (1 = no effect)
+  static final double AGE_FACTOR = 5; // how much does age effect metabolism (1 = no effect)
   static final int ENERGY_HISTORY_LENGTH = 6;
   static final float REPRODUCTION_DIFFERENCE = 0.1; // determine how different species can be for reproduction in percent of hue,  0 means  no difference; 1 means no limit
   double currentEnergy;
@@ -30,6 +30,8 @@ class Creature extends SoftBody {
   // Vision or View or Preference
   static final double MAX_VISION_DISTANCE = 2;
   static final double MIN_VISION_DISTANCE = 0.3;
+  static final double VISION_ANGLE_DEFAULT = 0.4;
+  static final double VISION_ANGLE_DIFFERENCE = 0.3; // Defalut +- 0.3
   final double STARTING_AXON_VARIABILITY = 1.0;
   final double FOOD_SENSITIVITY = 0.3;
   static final double MAX_DETAILED_ZOOM = 3.5; // Maximum zoom to draw details at
@@ -146,9 +148,9 @@ class Creature extends SoftBody {
     textFont(font, 0.58 * scaleUp);
     fill(0, 0, 1);
     String[] inputLabels = {"0Hue", "0Sat", "0Bri", "1Hue",
-  "1Sat", "1Bri", "0Dist", "1Dist","", "Touch" ,"Size", "Mem", "Const."};
-    String[] outputLabels = {"", "Accel.", "Turn", "Eat", "Fight", 
-  "Birth", "0VAngle", "1VAngle", "0VDist", "1VDist", "MHue", "Mem", "Const."};
+  "1Sat", "1Bri", "0Dist", "1Dist", "VAngle", "Touch" ,"Size", "Mem", "Const."};
+    String[] outputLabels = {"Accel.", "Turn", "Eat", "Fight", 
+  "Birth", "VAngle", "VDist", "", "", "","MHue", "Mem", "Const."};
     for (int y = 0; y < BRAIN_HEIGHT; y++) {
       textAlign(RIGHT);
       text(inputLabels[y], (-neuronSize - 0.1) * scaleUp, (y + (neuronSize * 0.6)) * scaleUp);
@@ -184,10 +186,6 @@ class Creature extends SoftBody {
     line(x1 * scaleUp, y1 * scaleUp, x2 * scaleUp, y2 * scaleUp);
   }
 
-/*
-{"0Hue", "0Sat", "0Bri", "1Hue",
-  "1Sat", "1Bri", "0Dist", "1Dist","MHue", "Touch" ,"Size", "Mem", "Const."};
-*/
   private void calcBrain() {
     for (int i = 0; i < visionResults.length; i++) {
       neurons[0][i] = visionResults[i];
@@ -195,7 +193,7 @@ class Creature extends SoftBody {
     
     neurons[0][6] = getOcclusionDist(0);
     neurons[0][7] = getOcclusionDist(1);
-    neurons[0][8] = 0;//mouthHue;
+    neurons[0][8] = visionDistances[1];
     neurons[0][9] = colliders.size();
     neurons[0][10] = energy;
 
@@ -233,20 +231,33 @@ class Creature extends SoftBody {
     if (useOutput) {
       int end = BRAIN_WIDTH - 1;
       //hue = Math.abs(neurons[end][0]) % 1.0;
-      accelerate(neurons[end][1], timeStep);
-      turn(neurons[end][2], timeStep);
-      eat(neurons[end][3], timeStep);
-      fight(neurons[end][4], timeStep);
-      if (neurons[end][5] > 0 && board.year-birthTime >= MATURE_AGE && energy > SAFE_SIZE) {
+      accelerate(neurons[end][0], timeStep);
+      turn(neurons[end][1], timeStep);
+      eat(neurons[end][2], timeStep);
+      fight(neurons[end][3], timeStep);
+      if (neurons[end][4] > 0 && board.year-birthTime >= MATURE_AGE && energy > SAFE_SIZE) {
         reproduce(SAFE_SIZE, timeStep);
       }
       // vision Outputs
+      
+      neurons[end][5] = sigmoid(neurons[end][5])*2-1;
+      setVisionAngle(-VISION_ANGLE_DEFAULT-neurons[end][5], 0);
+      setVisionAngle(VISION_ANGLE_DEFAULT+neurons[end][5], 1);
+      
+      neurons[end][6] = Math.abs(neurons[end][6] %MAX_VISION_DISTANCE);
+      setVisionDistance(neurons[end][6], 0); //0:10 //Neuron 8 and 9
+      setVisionDistance(neurons[end][6], 1); //0:10 //Neuron 8 and 9
+      
+      /*
       for (int i = 0; i < visionAngles.length; i++) {
-        neurons[end][6 + i] = Math.abs(neurons[end][6 + i] %MAX_VISION_DISTANCE);
-        neurons[end][6 + i + 2] = Math.abs(neurons[end][6 + i + 2] %MAX_VISION_DISTANCE);
-        //setVisionAngle(neurons[end][6 + i], i);// = -1:1 //Neuron 6 and 7
-        //setVisionDistance(neurons[end][6 + i + 2], i); //0:10 //Neuron 8 and 9
+        //neurons[end][5 + i] = Math.abs(neurons[end][5 + i] %MAX_VISION_DISTANCE);
+        neurons[end][5 + i + 2] = Math.abs(neurons[end][5 + i + 2] %MAX_VISION_DISTANCE);
+        //setVisionAngle(neurons[end][5 + i], i);// = -1:1 //Neuron 5 and 6
+        setVisionDistance(neurons[end][5 + i + 2], i); //0:10 //Neuron 8 and 9
       }
+      */
+      
+        //neurons[end][6 + i] = ;//visionAngles
 
       mouthHue = Math.abs(neurons[end][10]) % 1.0;
       for (int i = 0; i < MEMORY_COUNT; i++) {
