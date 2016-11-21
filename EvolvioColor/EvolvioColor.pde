@@ -1,8 +1,8 @@
 Board evoBoard;
 final int SEED = parseInt(random(1000000));
 final float NOISE_STEP_SIZE = 0.1;
-final int BOARD_WIDTH = 30;
-final int BOARD_HEIGHT = 30;
+final int BOARD_WIDTH = 100;
+final int BOARD_HEIGHT = 100;
 
 final float SCALE_TO_FIX_BUG = 100;
 

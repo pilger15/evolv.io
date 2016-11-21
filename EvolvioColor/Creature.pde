@@ -770,6 +770,6 @@ class Creature extends SoftBody {
     return py + visionDistances[i] * Math.sin(visionTotalAngle);
   }
   public double getOcclusionDist(int i) {    
-    return dist((float)px, (float)py, (float)(visionOccludedX[i]-px), (float)(visionOccludedY[i]-py));
+    return dist((float)px, (float)py, (float)(visionOccludedX[i]), (float)(visionOccludedY[i]));
   }
 }
